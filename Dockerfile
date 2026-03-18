@@ -18,7 +18,14 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     GOARCH=${TARGETARCH} \
     go build -o /out/mpcium ./cmd/mpcium
 
-FROM gcr.io/distroless/base-debian12:latest
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 \
+    GOOS=${TARGETOS} \
+    GOARCH=${TARGETARCH} \
+    go build -o /out/mpcium-cli ./cmd/mpcium-cli
+
+FROM gcr.io/distroless/base-debian12:latest AS runtime
 
 USER nonroot:nonroot
 WORKDIR /app
@@ -26,3 +33,12 @@ WORKDIR /app
 COPY --from=builder /out/mpcium /app/mpcium
 
 ENTRYPOINT ["/app/mpcium"]
+
+FROM gcr.io/distroless/base-debian12:latest AS cli
+
+USER nonroot:nonroot
+WORKDIR /app
+
+COPY --from=builder /out/mpcium-cli /app/mpcium-cli
+
+ENTRYPOINT ["/app/mpcium-cli"]
